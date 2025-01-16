@@ -5,13 +5,23 @@ using SolucionesResidenciales.Application.Common.Interfaces;
 using SolucionesResidenciales.Application;
 using System.Text.Json.Serialization;
 using SolucionesRecidencialesApi.Middleware;
+using Microsoft.Extensions.Configuration;
+using SolucionesResidenciales.Application.Common.Mappings;
+using SolucionesResidenciales.Infrastructure.Persistence;
+using SolucionesResidenciales.Infrastructure.Repository;
 
 
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddDbContext<SolucionesResidenciales.Infrastructure.Persistence.ApplicationDbContext>(options =>
+// Configurar servicios
+builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
+
+builder.Services.AddAutoMapper(typeof(MappingProfile).Assembly);
+
 
 // Add services to the container.
 // Agregar controladores y configurar opciones de serialización JSON
