@@ -1,5 +1,3 @@
-﻿
-
 using SolucionesResidenciales.Application.Common.Exceptions;
 using System.Text.Json;
 
@@ -24,6 +22,7 @@ public class ExceptionHandlingMiddleware
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "Excepción no controlada: {Message}", ex.Message);
             await HandleExceptionAsync(context, ex);
         }
     }
@@ -32,6 +31,17 @@ public class ExceptionHandlingMiddleware
     {
         var response = context.Response;
         response.ContentType = "application/json";
+
+        // Registrar detalles completos del error
+        _logger.LogError(exception, 
+            "Error detallado: {Message}\n" +
+            "Tipo de Excepción: {ExceptionType}\n" +
+            "Stack Trace: {StackTrace}\n" +
+            "Inner Exception: {InnerException}", 
+            exception.Message, 
+            exception.GetType().FullName, 
+            exception.StackTrace, 
+            exception.InnerException?.Message);
 
         object result;
 
@@ -46,13 +56,22 @@ public class ExceptionHandlingMiddleware
                 result = new { message = exception.Message };
                 break;
             default:
-                _logger.LogError(exception, "Error no manejado");
                 response.StatusCode = StatusCodes.Status500InternalServerError;
-                result = new { message = "Ha ocurrido un error interno del servidor." };
+                result = new { 
+                    message = "Ha ocurrido un error interno del servidor.",
+                    errorDetails = new {
+                        ExceptionType = exception.GetType().FullName,
+                        exception.Message,
+                        InnerExceptionMessage = exception.InnerException?.Message,
+                        exception.StackTrace
+                    }
+                };
                 break;
         }
 
-        var jsonResult = JsonSerializer.Serialize(result);
+        var jsonResult = JsonSerializer.Serialize(result, new JsonSerializerOptions { 
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase 
+        });
         await response.WriteAsync(jsonResult);
     }
 }
